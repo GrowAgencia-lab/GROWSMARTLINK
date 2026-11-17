@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tarjeta digital</title>
+<meta name="theme-color" content="#1c1c1e">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="card.css">
+<style>
+  html,body{margin:0;height:100%;background:#0e0e0f}
+  #app{min-height:100%;display:flex}
+  .loader{margin:auto;width:46px;height:46px;border:4px solid #333;border-top-color:#f5c400;border-radius:50%;animation:g 1s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  @media(min-width:500px){ #app{padding:30px 0} .sl-card{border-radius:28px;min-height:820px;box-shadow:0 20px 60px rgba(0,0,0,.5)} }
+</style>
+</head>
+<body>
+<div id="app"><div class="loader"></div></div>
+<script src="config.js"></script>
+<script src="card.js"></script>
+<script>
+(async function(){
+  const app = document.getElementById('app');
+  const slug = new URLSearchParams(location.search).get('c');
+  const msg = (t,s) => app.innerHTML = `<div class="sl-card"><div class="sl-msg"><h2>${t}</h2><p>${s||''}</p></div><div class="sl-foot">Tarjeta digital por <a href="${CONFIG.MARCA_URL}">${CONFIG.MARCA}</a></div></div>`;
+  if (!slug) return msg('Tarjeta no encontrada','Revisá el enlace.');
+
+  // caché local para que abra al instante en visitas repetidas
+  const KEY = 'sl_' + slug;
+  try{ const cached = JSON.parse(localStorage.getItem(KEY)||'null'); if (cached) show(cached); }catch(e){}
+
+  try{
+    const r = await fetch(CONFIG.API_URL + '?action=card&c=' + encodeURIComponent(slug)).then(r=>r.json());
+    if (!r.ok) { try{localStorage.removeItem(KEY)}catch(e){} return msg('Tarjeta no encontrada','Revisá el enlace.'); }
+    if (r.inactiva) { try{localStorage.removeItem(KEY)}catch(e){} return msg('Tarjeta inactiva','Esta tarjeta digital no está disponible en este momento.'); }
+    show(r.card);
+    try{ localStorage.setItem(KEY, JSON.stringify(r.card)); }catch(e){}
+  }catch(e){
+    if (!app.querySelector('.sl-name')) msg('Sin conexión','Intentá de nuevo en unos segundos.');
+  }
+
+  function show(c){
+    document.title = (c.nombre||'Tarjeta') + (c.empresa ? ' | ' + c.empresa : '');
+    const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = c.color3 || '#1c1c1e';
+    renderCard(app, c);
+  }
+})();
+</script>
+</body>
+</html>
